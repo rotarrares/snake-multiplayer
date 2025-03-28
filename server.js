@@ -12,8 +12,14 @@ const server = http.createServer(app);
 // Configure CORS
 app.use(cors());
 
-// Configure Socket.IO
-const io = socketIO(server);
+// Configure Socket.IO with explicit CORS settings
+const io = socketIO(server, {
+  cors: {
+    origin: "*", // Allow all origins in development
+    methods: ["GET", "POST"],
+    credentials: true
+  }
+});
 
 // Serve static files from the public directory
 app.use(express.static(path.join(__dirname, 'public')));
@@ -29,6 +35,16 @@ app.get('/', (req, res) => {
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'Snake Multiplayer is running' });
+});
+
+// Debug endpoint to check if server is running
+app.get('/debug', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok', 
+    message: 'Server is running',
+    socketio: 'enabled',
+    version: require('./package.json').version
+  });
 });
 
 // Use PORT from environment (Heroku sets this) or default to 3000
