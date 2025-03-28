@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiplayer Snake Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="startScreen" class="screen">
+            <h1>Multiplayer Snake</h1>
+            <div class="inputGroup">
+                <input type="text" id="playerName" placeholder="Enter your name">
+                <button id="playButton">Play</button>
+            </div>
+        </div>
+        
+        <div id="gameScreen" class="screen hidden">
+            <canvas id="gameCanvas"></canvas>
+            
+            <div id="uiOverlay">
+                <div id="minimap"></div>
+                
+                <div id="leaderboard">
+                    <h3>Leaderboard</h3>
+                    <ol id="leaderboardList"></ol>
+                </div>
+                
+                <div id="stats">
+                    <p>Score: <span id="scoreValue">0</span></p>
+                    <p>Length: <span id="lengthValue">1</span></p>
+                </div>
+            </div>
+            
+            <div id="respawnOverlay" class="hidden">
+                <h2>You died!</h2>
+                <p>Respawning in <span id="respawnTimer">3</span> seconds...</p>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
