@@ -15,6 +15,29 @@ document.addEventListener('DOMContentLoaded', () => {
   const respawnOverlay = document.getElementById('respawnOverlay');
   const respawnTimer = document.getElementById('respawnTimer');
   
+  // Create a debug element
+  const debugElement = document.createElement('div');
+  debugElement.style.position = 'fixed';
+  debugElement.style.bottom = '10px';
+  debugElement.style.left = '10px';
+  debugElement.style.padding = '10px';
+  debugElement.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+  debugElement.style.color = 'white';
+  debugElement.style.fontFamily = 'monospace';
+  debugElement.style.fontSize = '12px';
+  debugElement.style.zIndex = 1000;
+  document.body.appendChild(debugElement);
+
+  function logDebug(message) {
+    console.log(message);
+    debugElement.innerHTML += message + '<br>';
+    // Keep only the last 5 messages
+    const messages = debugElement.innerHTML.split('<br>');
+    if (messages.length > 6) {
+      debugElement.innerHTML = messages.slice(messages.length - 6).join('<br>');
+    }
+  }
+  
   // Game state variables
   let socket;
   let playerId;
@@ -29,6 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Server URL - For Heroku, connect to the same host
   // This approach automatically works in both development and production
   const SERVER_URL = window.location.origin;
+  logDebug(`Connecting to server at: ${SERVER_URL}`);
   
   // Initialize game
   function init() {
@@ -59,73 +83,106 @@ document.addEventListener('DOMContentLoaded', () => {
   // Start the game
   function startGame() {
     const playerName = playerNameInput.value.trim() || `Player${Math.floor(Math.random() * 1000)}`;
+    logDebug(`Starting game with name: ${playerName}`);
     
-    // Connect to server
-    socket = io(SERVER_URL);
+    // Disable the play button and show loading state
+    playButton.disabled = true;
+    playButton.textContent = 'Connecting...';
     
-    // Socket event handlers
-    socket.on('connect', () => {
-      console.log('Connected to server');
-      socket.emit('playerJoin', { name: playerName });
-    });
-    
-    socket.on('gameInit', (data) => {
-      playerId = data.id;
-      players = data.players;
-      food = data.food;
-      gameWidth = data.gameWidth;
-      gameHeight = data.gameHeight;
+    try {
+      // Connect to server with explicit options
+      socket = io(SERVER_URL, {
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        timeout: 10000
+      });
       
-      // Switch to game screen
-      startScreen.classList.add('hidden');
-      gameScreen.classList.remove('hidden');
+      // Socket event handlers
+      socket.on('connect', () => {
+        logDebug(`Connected to server with ID: ${socket.id}`);
+        socket.emit('playerJoin', { name: playerName });
+      });
       
-      // Start game loop
-      gameRunning = true;
-      requestAnimationFrame(gameLoop);
-    });
-    
-    socket.on('gameState', (data) => {
-      players = data.players;
-      food = data.food;
+      socket.on('connect_error', (error) => {
+        logDebug(`Connection error: ${error.message}`);
+        playButton.disabled = false;
+        playButton.textContent = 'Play';
+        alert('Error connecting to the game server. Please try again.');
+      });
       
-      // Update UI
-      updateLeaderboard();
-      
-      // Update player stats if player exists
-      if (players[playerId]) {
-        scoreValue.textContent = players[playerId].score;
-        lengthValue.textContent = players[playerId].segments.length;
+      socket.on('gameInit', (data) => {
+        logDebug(`Game initialized with ${Object.keys(data.players).length} players`);
+        playerId = data.id;
+        players = data.players;
+        food = data.food;
+        gameWidth = data.gameWidth;
+        gameHeight = data.gameHeight;
         
-        // Show/hide respawn overlay
-        if (!players[playerId].alive && respawnOverlay.classList.contains('hidden')) {
-          respawnOverlay.classList.remove('hidden');
-          let countdown = 3;
-          respawnTimer.textContent = countdown;
+        // Switch to game screen
+        startScreen.classList.add('hidden');
+        gameScreen.classList.remove('hidden');
+        
+        // Start game loop
+        gameRunning = true;
+        requestAnimationFrame(gameLoop);
+      });
+      
+      socket.on('gameState', (data) => {
+        players = data.players;
+        food = data.food;
+        
+        // Update UI
+        updateLeaderboard();
+        
+        // Update player stats if player exists
+        if (players[playerId]) {
+          scoreValue.textContent = players[playerId].score;
+          lengthValue.textContent = players[playerId].segments.length;
           
-          const timerInterval = setInterval(() => {
-            countdown--;
+          // Show/hide respawn overlay
+          if (!players[playerId].alive && respawnOverlay.classList.contains('hidden')) {
+            respawnOverlay.classList.remove('hidden');
+            let countdown = 3;
             respawnTimer.textContent = countdown;
             
-            if (countdown <= 0) {
-              clearInterval(timerInterval);
+            const timerInterval = setInterval(() => {
+              countdown--;
+              respawnTimer.textContent = countdown;
               
-              // Check if player is now alive (server may have respawned)
-              if (players[playerId] && players[playerId].alive) {
-                respawnOverlay.classList.add('hidden');
+              if (countdown <= 0) {
+                clearInterval(timerInterval);
+                
+                // Check if player is now alive (server may have respawned)
+                if (players[playerId] && players[playerId].alive) {
+                  respawnOverlay.classList.add('hidden');
+                }
               }
-            }
-          }, 1000);
-        } else if (players[playerId].alive && !respawnOverlay.classList.contains('hidden')) {
-          respawnOverlay.classList.add('hidden');
+            }, 1000);
+          } else if (players[playerId].alive && !respawnOverlay.classList.contains('hidden')) {
+            respawnOverlay.classList.add('hidden');
+          }
         }
-      }
-    });
-    
-    socket.on('disconnect', () => {
-      console.log('Disconnected from server');
-      // Handle disconnection (show message, etc.)
-    });
+      });
+      
+      socket.on('disconnect', () => {
+        logDebug('Disconnected from server');
+        gameRunning = false;
+        
+        // Handle disconnection - show message and reset UI
+        startScreen.classList.remove('hidden');
+        gameScreen.classList.add('hidden');
+        playButton.disabled = false;
+        playButton.textContent = 'Play';
+        
+        alert('Disconnected from the game server. Please refresh the page to reconnect.');
+      });
+    } catch (error) {
+      logDebug(`Error in startGame: ${error.message}`);
+      playButton.disabled = false;
+      playButton.textContent = 'Play';
+      alert(`Failed to start game: ${error.message}`);
+    }
   }
   
   // Game loop
@@ -411,4 +468,5 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Initialize the game
   init();
+  logDebug('Game initialized and waiting for player to start');
 });
