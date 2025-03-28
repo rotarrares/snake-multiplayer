@@ -10,6 +10,8 @@ let food = [];
 let gameInterval;
 
 function initGame(io) {
+  console.log('Initializing game');
+  
   // Initialize food
   generateFood();
   
@@ -25,41 +27,58 @@ function initGame(io) {
     
     // Player joins the game
     socket.on('playerJoin', (data) => {
-      const playerName = data.name || `Player${Object.keys(players).length + 1}`;
-      const playerColor = getRandomColor();
-      
-      // Create new player with random position
-      players[socket.id] = {
-        id: socket.id,
-        name: playerName,
-        color: playerColor,
-        segments: [{
-          x: Math.floor(Math.random() * (GAME_WIDTH - 100) + 50),
-          y: Math.floor(Math.random() * (GAME_HEIGHT - 100) + 50)
-        }],
-        direction: { x: 1, y: 0 },
-        score: 0,
-        alive: true
-      };
-      
-      // Send initial game state to the new player
-      socket.emit('gameInit', {
-        id: socket.id,
-        gameWidth: GAME_WIDTH,
-        gameHeight: GAME_HEIGHT,
-        players,
-        food
-      });
+      try {
+        console.log(`Player ${socket.id} joining with name: ${data?.name || 'Unknown'}`);
+        
+        const playerName = data?.name || `Player${Object.keys(players).length + 1}`;
+        const playerColor = getRandomColor();
+        
+        // Create new player with random position
+        players[socket.id] = {
+          id: socket.id,
+          name: playerName,
+          color: playerColor,
+          segments: [{
+            x: Math.floor(Math.random() * (GAME_WIDTH - 100) + 50),
+            y: Math.floor(Math.random() * (GAME_HEIGHT - 100) + 50)
+          }],
+          direction: { x: 1, y: 0 },
+          score: 0,
+          alive: true
+        };
+        
+        // Send initial game state to the new player
+        socket.emit('gameInit', {
+          id: socket.id,
+          gameWidth: GAME_WIDTH,
+          gameHeight: GAME_HEIGHT,
+          players,
+          food
+        });
+        
+        console.log(`Player ${socket.id} joined successfully. Total players: ${Object.keys(players).length}`);
+      } catch (error) {
+        console.error(`Error in playerJoin handler: ${error.message}`);
+      }
     });
     
     // Player changes direction
     socket.on('changeDirection', (direction) => {
-      if (players[socket.id] && players[socket.id].alive) {
-        // Prevent 180-degree turns (cannot turn directly backwards)
-        const currentDir = players[socket.id].direction;
-        if (!(direction.x === -currentDir.x && direction.y === -currentDir.y)) {
-          players[socket.id].direction = direction;
+      try {
+        if (!direction || typeof direction !== 'object') {
+          console.warn(`Invalid direction from player ${socket.id}`);
+          return;
         }
+        
+        if (players[socket.id] && players[socket.id].alive) {
+          // Prevent 180-degree turns (cannot turn directly backwards)
+          const currentDir = players[socket.id].direction;
+          if (!(direction.x === -currentDir.x && direction.y === -currentDir.y)) {
+            players[socket.id].direction = direction;
+          }
+        }
+      } catch (error) {
+        console.error(`Error in changeDirection handler: ${error.message}`);
       }
     });
     
@@ -74,88 +93,105 @@ function initGame(io) {
 }
 
 function updateGame() {
-  // Update each player's position
-  Object.keys(players).forEach(id => {
-    const player = players[id];
-    if (!player.alive) return;
-    
-    // Move head in current direction
-    const head = { ...player.segments[0] };
-    head.x += player.direction.x * 5;
-    head.y += player.direction.y * 5;
-    
-    // Boundary check
-    if (head.x < 0 || head.x > GAME_WIDTH || head.y < 0 || head.y > GAME_HEIGHT) {
-      player.alive = false;
-      setTimeout(() => respawnPlayer(id), 3000);
-      return;
-    }
-    
-    // Self collision check
-    for (let i = 1; i < player.segments.length; i++) {
-      if (distance(head, player.segments[i]) < 10) {
+  try {
+    // Update each player's position
+    Object.keys(players).forEach(id => {
+      const player = players[id];
+      if (!player || !player.alive) return;
+      
+      // Move head in current direction
+      const head = { ...player.segments[0] };
+      head.x += player.direction.x * 5;
+      head.y += player.direction.y * 5;
+      
+      // Boundary check
+      if (head.x < 0 || head.x > GAME_WIDTH || head.y < 0 || head.y > GAME_HEIGHT) {
         player.alive = false;
         setTimeout(() => respawnPlayer(id), 3000);
         return;
       }
-    }
-    
-    // Other players collision check
-    Object.keys(players).forEach(otherId => {
-      if (id === otherId) return;
       
-      const otherPlayer = players[otherId];
-      for (let segment of otherPlayer.segments) {
-        if (distance(head, segment) < 10) {
+      // Self collision check
+      for (let i = 1; i < player.segments.length; i++) {
+        if (distance(head, player.segments[i]) < 10) {
           player.alive = false;
           setTimeout(() => respawnPlayer(id), 3000);
           return;
         }
       }
-    });
-    
-    // Food collision check
-    food.forEach((foodItem, index) => {
-      if (distance(head, foodItem) < 15) {
-        // Eat food
-        player.score += 10;
-        player.segments.push({ ...player.segments[player.segments.length - 1] });
+      
+      // Other players collision check
+      Object.keys(players).forEach(otherId => {
+        if (id === otherId) return;
         
-        // Replace food
-        food[index] = {
-          x: Math.floor(Math.random() * GAME_WIDTH),
-          y: Math.floor(Math.random() * GAME_HEIGHT)
-        };
-      }
+        const otherPlayer = players[otherId];
+        if (!otherPlayer) return;
+        
+        for (let segment of otherPlayer.segments) {
+          if (distance(head, segment) < 10) {
+            player.alive = false;
+            setTimeout(() => respawnPlayer(id), 3000);
+            return;
+          }
+        }
+      });
+      
+      // Food collision check
+      food.forEach((foodItem, index) => {
+        if (distance(head, foodItem) < 15) {
+          // Eat food
+          player.score += 10;
+          player.segments.push({ ...player.segments[player.segments.length - 1] });
+          
+          // Replace food
+          food[index] = {
+            x: Math.floor(Math.random() * GAME_WIDTH),
+            y: Math.floor(Math.random() * GAME_HEIGHT)
+          };
+        }
+      });
+      
+      // Update segments (follow the leader)
+      player.segments.unshift(head);
+      player.segments.pop();
     });
-    
-    // Update segments (follow the leader)
-    player.segments.unshift(head);
-    player.segments.pop();
-  });
+  } catch (error) {
+    console.error(`Error in updateGame: ${error.message}`);
+  }
 }
 
 function respawnPlayer(id) {
-  if (!players[id]) return;
-  
-  players[id] = {
-    ...players[id],
-    segments: [{
-      x: Math.floor(Math.random() * (GAME_WIDTH - 100) + 50),
-      y: Math.floor(Math.random() * (GAME_HEIGHT - 100) + 50)
-    }],
-    direction: { x: 1, y: 0 },
-    alive: true
-  };
+  try {
+    if (!players[id]) return;
+    
+    players[id] = {
+      ...players[id],
+      segments: [{
+        x: Math.floor(Math.random() * (GAME_WIDTH - 100) + 50),
+        y: Math.floor(Math.random() * (GAME_HEIGHT - 100) + 50)
+      }],
+      direction: { x: 1, y: 0 },
+      alive: true
+    };
+    
+    console.log(`Player ${id} respawned`);
+  } catch (error) {
+    console.error(`Error in respawnPlayer: ${error.message}`);
+  }
 }
 
 function generateFood() {
-  food = [];
-  for (let i = 0; i < FOOD_COUNT; i++) {
-    food.push({
-      x: Math.floor(Math.random() * GAME_WIDTH),
-      y: Math.floor(Math.random() * GAME_HEIGHT)
-    });
+  try {
+    food = [];
+    for (let i = 0; i < FOOD_COUNT; i++) {
+      food.push({
+        x: Math.floor(Math.random() * GAME_WIDTH),
+        y: Math.floor(Math.random() * GAME_HEIGHT)
+      });
+    }
+    console.log(`Generated ${food.length} food items`);
+  } catch (error) {
+    console.error(`Error in generateFood: ${error.message}`);
   }
 }
 
