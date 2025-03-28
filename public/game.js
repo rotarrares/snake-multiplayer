@@ -26,9 +26,9 @@ document.addEventListener('DOMContentLoaded', () => {
   let lastFrameTime = 0;
   let gameRunning = false;
   
-  // Server URL - Change this to your deployed backend URL in production
-  // const SERVER_URL = 'http://localhost:3000';
-  const SERVER_URL = 'https://snake-multiplayer-backend.onrender.com'; // Update with actual deployment URL
+  // Server URL - For Heroku, connect to the same host
+  // This approach automatically works in both development and production
+  const SERVER_URL = window.location.origin;
   
   // Initialize game
   function init() {
