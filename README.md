@@ -2,10 +2,6 @@
 
 A real-time multiplayer Snake game built with Node.js, Express, Socket.IO, and HTML5 Canvas.
 
-## Play Now!
-
-You can play the game online at: [https://rotarrares.github.io/snake-multiplayer](https://rotarrares.github.io/snake-multiplayer)
-
 ## Features
 
 * **Multiplayer gameplay** - Multiple players can connect and play simultaneously
@@ -44,11 +40,35 @@ You can play the game online at: [https://rotarrares.github.io/snake-multiplayer
 * **Game Loop**: Server-side updates at fixed intervals
 * **State Management**: Central game state on server with client prediction
 
-## Deployment
+## Deployment on Heroku
 
-The game consists of two parts:
-- **Frontend**: Hosted on GitHub Pages
-- **Backend**: Hosted on Render.com
+This project is configured for easy deployment on Heroku, where both the frontend and backend are served from the same application.
+
+### Deployment Instructions
+
+1. Create a free Heroku account at [heroku.com](https://heroku.com) if you don't have one
+2. Install the [Heroku CLI](https://devcenter.heroku.com/articles/heroku-cli)
+3. Login to Heroku CLI:
+   ```
+   heroku login
+   ```
+4. Create a new Heroku app:
+   ```
+   heroku create snake-multiplayer-game
+   ```
+   Note: Replace `snake-multiplayer-game` with your preferred name (must be unique on Heroku)
+5. Deploy your code to Heroku:
+   ```
+   git push heroku main
+   ```
+6. Open your deployed application:
+   ```
+   heroku open
+   ```
+
+### Environment Variables
+
+No additional environment variables are required for basic deployment.
 
 ## Local Development
 
@@ -57,7 +77,6 @@ The game consists of two parts:
 3. Install dependencies: `npm install`
 4. Start the server: `npm start`
 5. Open a web browser and go to: `http://localhost:3000`
-6. For local development, update the SERVER_URL in `public/game.js` to use localhost
 
 ## License
 
