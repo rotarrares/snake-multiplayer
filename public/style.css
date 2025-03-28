@@ -81,6 +81,18 @@ body {
   background-color: #45a049;
 }
 
+#playButton:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+/* Connection status */
+#connectionStatus {
+  margin-top: 15px;
+  color: #FFD700;
+  font-size: 14px;
+}
+
 /* Game screen */
 #gameCanvas {
   background-color: #1a1a1a;
@@ -106,6 +118,7 @@ body {
   background-color: rgba(0, 0, 0, 0.7);
   border: 2px solid white;
   border-radius: 5px;
+  display: block; /* Ensure it displays as a block element */
 }
 
 /* Leaderboard */
@@ -167,4 +180,22 @@ body {
 #respawnTimer {
   font-weight: bold;
   color: #FFD700;
+}
+
+/* Debug panel */
+#debugPanel {
+  position: fixed;
+  bottom: 10px;
+  left: 10px;
+  padding: 10px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  font-family: monospace;
+  font-size: 12px;
+  z-index: 1000;
+  max-width: 300px;
+  max-height: 150px;
+  overflow-y: auto;
+  border-radius: 5px;
+  border: 1px solid #444;
 }
